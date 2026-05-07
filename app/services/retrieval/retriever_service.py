@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Chunk, Document, RetrievalRun
 from app.schemas.retrieval import RetrievalRequest, RetrievalResponse, RetrievedChunk
-from app.services.retrieval.bm25 import keyword_score
+from app.services.retrieval.bm25 import bm25_scores, keyword_score
 from app.services.retrieval.reranker import BaseReranker, NoOpReranker
 
 
@@ -16,14 +16,20 @@ class RetrieverService:
     def retrieve(self, request: RetrievalRequest) -> RetrievalResponse:
         started = time.perf_counter()
         rows = self.db.query(Chunk, Document).join(Document, Chunk.document_id == Document.id).all()
-        scored: list[RetrievedChunk] = []
+        candidate_rows = [
+            (chunk, document)
+            for chunk, document in rows
+            if self._matches_filters(chunk, document, request)
+        ]
 
-        for chunk, document in rows:
-            # TODO: Add metadata filtering, query rewriting, dense retrieval, pgvector search,
-            # hybrid score fusion, and stale-document handling.
-            score = keyword_score(request.query, chunk.content)
+        scored: list[RetrievedChunk] = []
+        scores = self._score_candidates(request, candidate_rows)
+
+        for (chunk, document), score in zip(candidate_rows, scores, strict=True):
             if score <= 0:
                 continue
+
+            metadata = self._combined_metadata(chunk, document)
             scored.append(
                 RetrievedChunk(
                     chunk_id=chunk.id,
@@ -33,7 +39,7 @@ class RetrieverService:
                     score=score,
                     source_type=document.source_type,
                     source_uri=document.source_uri,
-                    metadata=chunk.metadata_json or {},
+                    metadata=metadata,
                 )
             )
 
@@ -55,3 +61,41 @@ class RetrieverService:
             latency_ms=latency_ms,
             chunks=reranked,
         )
+
+    def _score_candidates(
+        self,
+        request: RetrievalRequest,
+        candidate_rows: list[tuple[Chunk, Document]],
+    ) -> list[float]:
+        if request.strategy == "keyword_mock":
+            return [keyword_score(request.query, chunk.content) for chunk, _ in candidate_rows]
+
+        corpus = [chunk.content for chunk, _ in candidate_rows]
+        return bm25_scores(request.query, corpus)
+
+    def _matches_filters(
+        self,
+        chunk: Chunk,
+        document: Document,
+        request: RetrievalRequest,
+    ) -> bool:
+        filters = request.filters
+
+        if filters.source_type is not None and document.source_type != filters.source_type:
+            return False
+
+        if filters.document_id is not None and document.id != filters.document_id:
+            return False
+
+        metadata = self._combined_metadata(chunk, document)
+        for key, expected_value in filters.metadata.items():
+            if metadata.get(key) != expected_value:
+                return False
+
+        return True
+
+    def _combined_metadata(self, chunk: Chunk, document: Document) -> dict:
+        return {
+            **(document.metadata_json or {}),
+            **(chunk.metadata_json or {}),
+        }
