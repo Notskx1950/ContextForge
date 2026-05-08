@@ -103,9 +103,3 @@ ContextForge will evolve toward a regression-driven RAG platform:
 - Mock adapters keep the API stable while allowing future embedding/vector/LLM providers to be swapped in.
 - The agent graph is explicit and auditable before adding LangGraph runtime complexity.
 - Action tools produce drafts only to avoid unsafe external side effects.
-
-## Resume Bullets Draft
-
-- Built ContextForge, a production-style agentic RAG backend skeleton using FastAPI, Pydantic v2, SQLAlchemy, and PostgreSQL-ready data models for engineering knowledge workflows.
-- Designed adapter interfaces for embeddings, vector stores, rerankers, retrievers, LLM/tool calls, and evaluation metrics to support future pgvector, LangGraph, and Ragas integrations.
-- Implemented a LangGraph-style agent workflow with explicit state, nodes, retrieval planning, evidence verification, citations, tool-call records, and human-approval flags.
