@@ -1,16 +1,19 @@
-﻿from typing import Any
+﻿from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+
+RetrievalStrategy = Literal["keyword_mock", "bm25", "vector", "hybrid"]
 
 class RetrievalFilters(BaseModel):
     source_type: str | None = None
     document_id: int | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+
 class RetrievalRequest(BaseModel):
     query: str
     top_k: int = Field(default=5, ge=1, le=25)
-    strategy: str = "keyword_mock"
+    strategy: RetrievalStrategy = "bm25"
     filters: RetrievalFilters = Field(default_factory=RetrievalFilters)
 
 
