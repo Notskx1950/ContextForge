@@ -3,7 +3,16 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db.models import Document
 from app.db.session import get_db
-from app.schemas.documents import ChunkRead, DocumentRead, IngestTextRequest, IngestTextResponse
+from app.schemas.documents import (
+    ChunkRead,
+    DocumentRead,
+    IngestMarkdownDirectoryRequest,
+    IngestMarkdownDirectoryResponse,
+    IngestMarkdownFileRequest,
+    IngestMarkdownRequest,
+    IngestTextRequest,
+    IngestTextResponse,
+)
 from app.services.ingestion.ingestion_service import IngestionService
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -13,6 +22,28 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 def ingest_text(request: IngestTextRequest, db: Session = Depends(get_db)) -> IngestTextResponse:
     return IngestionService(db).ingest_text(request)
 
+@router.post("/ingest-markdown", response_model=IngestTextResponse)
+def ingest_markdown(
+    request: IngestMarkdownRequest,
+    db: Session = Depends(get_db),
+) -> IngestTextResponse:
+    return IngestionService(db).ingest_markdown(request)
+
+
+@router.post("/ingest-markdown-file", response_model=IngestTextResponse)
+def ingest_markdown_file(
+    request: IngestMarkdownFileRequest,
+    db: Session = Depends(get_db),
+) -> IngestTextResponse:
+    return IngestionService(db).ingest_markdown_file(request)
+
+
+@router.post("/ingest-markdown-directory", response_model=IngestMarkdownDirectoryResponse)
+def ingest_markdown_directory(
+    request: IngestMarkdownDirectoryRequest,
+    db: Session = Depends(get_db),
+) -> IngestMarkdownDirectoryResponse:
+    return IngestionService(db).ingest_markdown_directory(request)
 
 @router.get("/{document_id}", response_model=DocumentRead)
 def get_document(document_id: int, db: Session = Depends(get_db)) -> DocumentRead:
