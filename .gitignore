@@ -6,3 +6,4 @@ __pycache__/
 *.db
 .env
 .DS_Store
+demo_architecture_docs/
