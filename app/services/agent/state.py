@@ -1,4 +1,4 @@
-﻿from typing import TypedDict
+﻿from typing import Any, TypedDict
 
 from app.schemas.agent import AgentTraceStep, ToolCallRead
 from app.schemas.common import Citation
@@ -15,5 +15,7 @@ class AgentState(TypedDict, total=False):
     draft_answer: str
     final_answer: str
     citations: list[Citation]
+    unsupported_claims: list[str]
+    generation_metadata: dict[str, Any]
     trace_steps: list[AgentTraceStep]
     requires_human_approval: bool

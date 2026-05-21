@@ -30,3 +30,5 @@ class AgentQueryResponse(BaseModel):
     trace_steps: list[AgentTraceStep]
     tool_calls: list[ToolCallRead]
     requires_human_approval: bool
+    unsupported_claims: list[str] = Field(default_factory=list)
+    generation_metadata: dict[str, Any] = Field(default_factory=dict)
