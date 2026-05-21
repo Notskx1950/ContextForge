@@ -20,7 +20,11 @@ class AgentService:
             user_query=request.query,
             final_answer=final_answer,
             status="completed",
-            trace_json={"steps": [step.model_dump() for step in trace_steps]},
+            trace_json={
+                "steps": [step.model_dump() for step in trace_steps],
+                "generation_metadata": state.get("generation_metadata", {}),
+                "unsupported_claims": state.get("unsupported_claims", []),
+            },
         )
         self.db.add(run)
         self.db.flush()
@@ -44,4 +48,6 @@ class AgentService:
             trace_steps=trace_steps,
             tool_calls=tool_calls,
             requires_human_approval=state.get("requires_human_approval", False),
+            unsupported_claims=state.get("unsupported_claims", []),
+            generation_metadata=state.get("generation_metadata", {}),
         )
