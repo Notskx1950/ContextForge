@@ -3,6 +3,7 @@ from app.schemas.common import Citation
 from app.schemas.retrieval import RetrievalRequest
 from app.services.agent.state import AgentState
 from app.services.retrieval.retriever_service import RetrieverService
+from app.services.generation import GroundedAnswerComposer
 
 
 def _trace(state: AgentState, node: str, message: str, data: dict | None = None) -> None:
@@ -75,31 +76,33 @@ def verify_evidence_node(state: AgentState) -> AgentState:
     return state
 
 
-def compose_answer_node(state: AgentState) -> AgentState:
-    chunks = state.get("retrieved_chunks", [])
-    citations = [
-        Citation(
-            chunk_id=chunk.chunk_id,
-            document_id=chunk.document_id,
-            title=chunk.title,
-            source_type=chunk.source_type,
-            source_uri=chunk.source_uri,
-            score=chunk.score,
-            content_preview=chunk.content[:240],
-        )
-        for chunk in chunks
-    ]
-    state["citations"] = citations
-    if not chunks:
-        answer = "I do not have enough indexed context to answer this yet. Ingest relevant docs first."
-    else:
-        citation_lines = [f"[{i}] {c.title} chunk={c.chunk_id} score={c.score}" for i, c in enumerate(citations, start=1)]
-        answer = (
-            "Mock grounded answer based on retrieved engineering context. "
-            "Replace this composer with an LLM-backed structured-output chain later.\n\n"
-            + "\n".join(citation_lines)
-        )
-    state["draft_answer"] = answer
-    state["final_answer"] = answer
-    _trace(state, "compose_answer", "Composed answer with citations using mock logic.")
+def compose_answer_node(
+    state: AgentState,
+    composer: GroundedAnswerComposer | None = None,
+) -> AgentState:
+    composer = composer or GroundedAnswerComposer()
+
+    composed = composer.compose(
+        query=state["user_query"],
+        context_chunks=state.get("retrieved_chunks", []),
+        evidence_score=state.get("evidence_score", 0.0),
+    )
+
+    state["citations"] = composed.citations
+    state["unsupported_claims"] = composed.unsupported_claims
+    state["generation_metadata"] = composed.generation_metadata
+    state["draft_answer"] = composed.answer
+    state["final_answer"] = composed.answer
+
+    _trace(
+        state,
+        "compose_answer",
+        "Composed grounded answer with generation provider.",
+        {
+            "citation_count": len(composed.citations),
+            "unsupported_claim_count": len(composed.unsupported_claims),
+            "generation_metadata": composed.generation_metadata,
+        },
+    )
+
     return state
