@@ -1,5 +1,4 @@
 ﻿from app.schemas.agent import AgentTraceStep, ToolCallRead
-from app.schemas.common import Citation
 from app.schemas.retrieval import RetrievalRequest
 from app.services.agent.state import AgentState
 from app.services.retrieval.retriever_service import RetrieverService
